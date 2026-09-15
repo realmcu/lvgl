@@ -175,11 +175,12 @@ static void hw_blit_font(local_draw_font_t *font, local_font_glyph_t *glyph)
     ppe_get_identity(&inverse);
     inverse.m[0][2] = font->target_rect.x1 - glyph->pos_x;
     inverse.m[1][2] = font->target_rect.y1 - glyph->pos_y;
-    lv_ppe_finish();
+    PPE_Finish();
     PPE_ERR err = PPE_Blit_Inverse(&target, &source, NULL, &inverse, &constraint,
                                    PPE_BLEND_PREMULTIPLY);
+    PPE_Mask_All_Interrupt(ENABLE);
 #if !LV_PPE_DRAW_ASYNC
-    lv_ppe_finish();
+    PPE_Finish();
 #endif
     if (err != PPE_SUCCESS)
     {

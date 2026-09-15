@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026, Realtek Semiconductor Corporation
  *
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: LicenseRef-Realtek-5-Clause
  */
 
 /**
@@ -26,7 +26,14 @@
 #if LV_USE_RTK_IDU_HW
 #include "rtl_idu.h"
 #include "rtl_ppe.h"
+#include "rtl876x_rcc.h"
 #include <dma_channel.h>
+
+#if defined(__ZEPHYR__)
+#include <zephyr/kernel.h>
+#include <zephyr/irq.h>
+#include "vector_table.h"
+#endif
 #endif
 
 /*********************
@@ -35,9 +42,41 @@
 #define DECODER_NAME    "IDU"
 #define image_cache_draw_buf_handlers &(LV_GLOBAL_DEFAULT()->image_cache_draw_buf_handlers)
 
+#define LV_IDU_WAIT_TIMEOUT_MS  1000
+#define LV_IDU_IRQ_PRIORITY     3
+
 #if LV_USE_RTK_IDU_HW
 static uint8_t high_speed_dma_channel_num = 0xFF;
 static uint8_t low_speed_dma_channel_num = 0xFF;
+#define LV_IDU_SYNC_SEM_WAIT        1
+#if defined(__ZEPHYR__) && LV_IDU_SYNC_SEM_WAIT
+static struct k_sem lv_idu_sync_sem;
+static bool lv_idu_thread_sync;
+
+static void lv_idu_isr(const void *arg)
+{
+    (void)arg;
+    if (IDU_GetINTStatus(IDU_DECOMPRESS_FINISH_INT) == SET)
+    {
+        IDU_INTConfig(IDU_DECOMPRESS_FINISH_INT, DISABLE);
+        IDU_MaskINTConfig(IDU_DECOMPRESS_FINISH_INT, ENABLE);
+        IDU_ClearINTPendingBit(IDU_DECOMPRESS_FINISH_INT);
+        k_sem_give(&lv_idu_sync_sem);
+    }
+}
+
+static void lv_idu_sem_init(void)
+{
+    if (lv_idu_thread_sync)
+    {
+        return;
+    }
+    k_sem_init(&lv_idu_sync_sem, 0, 1);
+    irq_connect_dynamic(IDU_IRQn, LV_IDU_IRQ_PRIORITY, lv_idu_isr, NULL, 0);
+    irq_enable(IDU_IRQn);
+    lv_idu_thread_sync = true;
+}
+#endif
 #endif
 /**********************
  *      TYPEDEFS
@@ -154,9 +193,14 @@ void lv_rtk_idu_init(void)
 
 #if LV_USE_RTK_IDU_HW
     PPE_CLK_ENABLE(ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_IDU, APBPeriph_IDU_CLOCK, ENABLE);
 
     GDMA_channel_request(&high_speed_dma_channel_num, NULL, true);
     GDMA_channel_request(&low_speed_dma_channel_num, NULL, false);
+#if defined(__ZEPHYR__) && LV_IDU_SYNC_SEM_WAIT
+    /* Interrupt-mode decode: wire the IDU completion IRQ + semaphore. */
+    lv_idu_sem_init();
+#endif
 #endif
     LV_LOG_INFO("IDU decoder initialized");
 }
@@ -204,7 +248,8 @@ static lv_result_t idu_decoder_info(lv_image_decoder_t *decoder, lv_image_decode
             uint8_t headers[20];
 
             res = lv_fs_read(&f, headers, sizeof(headers), NULL);
-            if(res != LV_FS_RES_OK) {
+            if (res != LV_FS_RES_OK)
+            {
                 lv_fs_close(&f);
                 return LV_RES_INV;
             }
@@ -312,7 +357,7 @@ static lv_result_t idu_decoder_open(lv_image_decoder_t *decoder, lv_image_decode
             lv_cache_t *cache = LV_GLOBAL_DEFAULT()->img_cache;
             int retry_count = 0;
             const int max_retries = 10;
-            
+
             while (decoded == NULL && retry_count < max_retries)
             {
                 bool evict_res = lv_cache_evict_one(cache, NULL);
@@ -321,11 +366,11 @@ static lv_result_t idu_decoder_open(lv_image_decoder_t *decoder, lv_image_decode
                     break;
                 }
                 decoded = lv_draw_buf_create_ex(image_cache_draw_buf_handlers, width, height,
-                                               dsc->header.cf, LV_STRIDE_AUTO);
+                                                dsc->header.cf, LV_STRIDE_AUTO);
                 retry_count++;
             }
         }
-        
+
         if (decoded == NULL)
         {
             dsc->decoded = NULL;
@@ -333,7 +378,8 @@ static lv_result_t idu_decoder_open(lv_image_decoder_t *decoder, lv_image_decode
             LV_PROFILER_DECODER_END_TAG("lv_idu_decoder_open");
             return LV_RESULT_INVALID;
         }
-        decoded->header.flags |= (image->header.flags & (LV_IMAGE_FLAGS_USER1 | LV_IMAGE_FLAGS_USER2 | LV_IMAGE_FLAGS_USER3));
+        decoded->header.flags |= (image->header.flags & (LV_IMAGE_FLAGS_USER1 | LV_IMAGE_FLAGS_USER2 |
+                                                         LV_IMAGE_FLAGS_USER3));
         dsc->decoded = decoded;
         uint8_t *img_data = (uint8_t *)decoded->data;
 
@@ -430,8 +476,10 @@ static void idu_decoder_close(lv_image_decoder_t *decoder, lv_image_decoder_dsc_
      */
     if (dsc->args.no_cache ||
         !lv_image_cache_is_enabled() ||
-        dsc->cache_entry == NULL) {
-        if (dsc->decoded) {
+        dsc->cache_entry == NULL)
+    {
+        if (dsc->decoded)
+        {
             lv_draw_buf_destroy((lv_draw_buf_t *)dsc->decoded);
         }
     }
@@ -494,6 +542,35 @@ static lv_result_t hw_acc_idu_decode(const uint8_t *image, uint32_t buffer_strid
     dma_cfg.output_buf = (uint32_t *)output;
     dma_cfg.RX_DMA_channel_num = high_speed_dma_channel_num;
     dma_cfg.TX_DMA_channel_num = low_speed_dma_channel_num;
+
+#if defined(__ZEPHYR__) && LV_IDU_SYNC_SEM_WAIT
+    if (lv_idu_thread_sync && !k_is_in_isr())
+    {
+        IDU_Interrupt_Config int_cfg = {0};
+        int_cfg.idu_decompress_finish_int = 1;
+        int_cfg.idu_decompress_error_int = 1;
+        IDU_State_Record record = {0};
+
+        IDU_ERROR err = IDU_Decode_With_Interrupt((uint8_t *)file, &range, &dma_cfg, int_cfg,
+                                                  &record);
+        if (err != IDU_SUCCESS)
+        {
+            return LV_RESULT_INVALID;
+        }
+        if (k_sem_take(&lv_idu_sync_sem, K_MSEC(LV_IDU_WAIT_TIMEOUT_MS)) != 0)
+        {
+            IDU_Clean_State(&record);
+            return LV_RESULT_INVALID;
+        }
+        if (IDU_GetINTStatus(IDU_DECOMPRESS_ERROR_INT) == SET)
+        {
+            IDU_Clean_State(&record);
+            return LV_RESULT_INVALID;
+        }
+        IDU_Clean_State(&record);
+        return LV_RESULT_OK;
+    }
+#endif
 
     IDU_ERROR err = IDU_Decode((uint8_t *)file, &range, &dma_cfg);
     if (err != IDU_SUCCESS)

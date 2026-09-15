@@ -62,6 +62,9 @@ void lv_draw_ppe_init(void)
     draw_ppe_unit->base_unit.name = "PPE";
     lv_acc_dma_channel_init();
     RCC_PeriphClockCmd(APBPeriph_PPE, APBPeriph_PPE_CLOCK, ENABLE);
+#if LV_PPE_SYNC_SEM_WAIT
+    lv_ppe_sem_init();
+#endif
 }
 
 void lv_draw_ppe_deinit(void)

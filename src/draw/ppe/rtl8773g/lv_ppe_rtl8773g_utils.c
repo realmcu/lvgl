@@ -26,6 +26,12 @@
 #include "rtl_idu_int.h"
 #include "string.h"
 
+#if defined(__ZEPHYR__)
+#include <zephyr/kernel.h>
+#include <zephyr/irq.h>
+#include "vector_table.h"
+#endif
+
 DSP_RAM_DATA_SECTION uint8_t cache_buffer[LV_PPE_MAX_BUFFER_SIZE];
 /*********************
  *      DEFINES
@@ -653,12 +659,65 @@ void lv_ppe_async_finish(void)
 }
 #endif
 
+#include "trace.h"
+#if defined(__ZEPHYR__) && !LV_PPE_DRAW_ASYNC && LV_PPE_SYNC_SEM_WAIT
+static struct k_sem lv_ppe_sync_sem;
+static bool lv_ppe_sem_ready;
+
+static void lv_ppe_isr(const void *arg)
+{
+    (void)arg;
+    if (PPE_Get_Interrupt_Status(PPE_ALL_OVER_INT))
+    {
+        PPE_Mask_All_Interrupt(ENABLE);
+        PPE_Clear_Interrupt(PPE_ALL_OVER_INT);
+        k_sem_give(&lv_ppe_sync_sem);
+    }
+}
+
+void lv_ppe_sem_init(void)
+{
+    if (lv_ppe_sem_ready)
+    {
+        return;
+    }
+    k_sem_init(&lv_ppe_sync_sem, 0, 1);
+    irq_connect_dynamic(PPE_IRQn, LV_PPE_IRQ_PRIORITY, lv_ppe_isr, NULL, 0);
+    irq_enable(PPE_IRQn);
+    lv_ppe_sem_ready = true;
+}
+#else
+void lv_ppe_sem_init(void)
+{
+}
+#endif
+
 void lv_ppe_finish(void)
 {
 #if LV_PPE_DRAW_ASYNC
     lv_ppe_async_finish();
 #else
-    PPE_Finish();
+#if defined(__ZEPHYR__) && LV_PPE_SYNC_SEM_WAIT
+    if (lv_ppe_sem_ready && !k_is_in_isr())
+    {
+        if (PPE_Is_Busy())
+        {
+            while (PPE_Is_Busy())
+            {
+                if (k_sem_take(&lv_ppe_sync_sem, K_MSEC(LV_PPE_WAIT_TIMEOUT_MS)) != 0)
+                {
+                    /* Timeout fallback: bounded poll + suspend-abort. */
+                    PPE_Finish();
+                    break;
+                }
+            }
+        }
+    }
+    else
+#endif
+    {
+        PPE_Finish();
+    }
 #endif
 }
 

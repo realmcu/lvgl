@@ -1,8 +1,9 @@
 /*
  * Copyright (c) 2026, Realtek Semiconductor Corporation
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Realtek-5-Clause
  */
+
 
 /**
  * @file app_rtk_port.c
@@ -18,6 +19,7 @@
 
 #include "os_task.h"
 #include "os_timer.h"
+#include "os_sched.h"
 #include "trace.h"
 #include "platform_utils.h"
 
@@ -213,8 +215,18 @@ static void lvgl_demo_run(void *p)
 
     while (1)
     {
-        // lv_obj_invalidate(lv_screen_active());
-        lv_task_handler();
+        uint32_t delay_ms = lv_timer_handler();
+
+        if (delay_ms == LV_NO_TIMER_READY)
+        {
+            delay_ms = LV_DEF_REFR_PERIOD;
+        }
+        // else if (delay_ms == 0)
+        // {
+        //     delay_ms = 1;
+        // }
+
+        os_delay(delay_ms);
     }
 }
 

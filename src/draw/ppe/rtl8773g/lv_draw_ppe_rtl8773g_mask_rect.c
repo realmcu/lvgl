@@ -23,6 +23,7 @@
 #include "../../../stdlib/lv_string.h"
 #include "../../sw/lv_draw_sw.h"
 #include "../../sw/lv_draw_sw_mask_private.h"
+#include "lv_ppe_rtl8773g_utils.h"
 
 /*********************
  *      DEFINES
