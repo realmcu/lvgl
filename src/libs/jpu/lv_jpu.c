@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026, Realtek Semiconductor Corporation
  *
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: LicenseRef-Realtek-5-Clause
  */
 
 /**
@@ -61,7 +61,7 @@ static bool get_jpeg_head_info(const void *src, lv_image_src_t src_type, uint32_
                                uint32_t  *height);
 static bool get_jpeg_size(uint8_t *data, uint32_t data_size, uint32_t *width, uint32_t *height);
 static void *jpu_malloc(size_t size);
-static void jpu_free(void * buf);
+static void jpu_free(void *buf);
 // static bool get_jpeg_direction(uint8_t * data, uint32_t data_size, uint32_t * orientation);
 // static void rotate_buffer(lv_draw_buf_t * decoded, uint8_t * buffer, uint32_t line_index, uint32_t angle);
 // static void error_exit(j_common_ptr cinfo);
@@ -281,6 +281,7 @@ static lv_result_t decoder_open(lv_image_decoder_t *decoder, lv_image_decoder_ds
         // start decode
 #if 1
         JPU_DEC_PARAM dec_param;
+        JPU_DEC_STATE_RECORD record = {0};
         uint8_t *output = NULL;
         uint32_t output_size = 0, w = 0, h = 0;
         JPU_ERROR err;
@@ -292,7 +293,7 @@ static lv_result_t decoder_open(lv_image_decoder_t *decoder, lv_image_decoder_ds
         dec_param.useWrapper = 1;
         dec_param.rgbType = JPU_RGB565;
         LV_LOG_INFO("data %p, %d", dec_param.data, dec_param.size);
-        err = hal_jpu_decode(&dec_param, &output, &output_size, &w, &h);
+        err = hal_jpu_decode(&dec_param, &record, &output, &output_size, &w, &h);
         if (err != JPU_SUCCESS)
         {
             LV_LOG_WARN("decode jpeg file failed, err: %d", err);
@@ -381,6 +382,7 @@ static lv_result_t decoder_open(lv_image_decoder_t *decoder, lv_image_decoder_ds
         LV_LOG_INFO("start dec");
 #if 1
         JPU_DEC_PARAM dec_param;
+        JPU_DEC_STATE_RECORD record = {0};
         uint8_t *output = NULL;
         uint32_t output_size = 0, w = 0, h = 0;
         JPU_ERROR err;
@@ -392,7 +394,7 @@ static lv_result_t decoder_open(lv_image_decoder_t *decoder, lv_image_decoder_ds
         dec_param.useWrapper = 1;
         dec_param.rgbType = JPU_RGB565;
         LV_LOG_INFO("data %p, %d", dec_param.data, dec_param.size);
-        err = hal_jpu_decode(&dec_param, &output, &output_size, &w, &h);
+        err = hal_jpu_decode(&dec_param, &record, &output, &output_size, &w, &h);
         if (err != JPU_SUCCESS)
         {
             LV_LOG_WARN("decode jpeg file failed, err: %d", err);
@@ -663,7 +665,7 @@ static void *jpu_malloc(size_t size)
 {
     return lv_draw_buf_get_image_handlers()->buf_malloc_cb(size, 0);
 }
-static void jpu_free(void * buf)
+static void jpu_free(void *buf)
 {
     lv_draw_buf_get_image_handlers()->buf_free_cb(buf);
 }
