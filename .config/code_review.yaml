@@ -1,0 +1,148 @@
+agent_page_id: https://wiki.realtek.com/pages/viewpage.action?pageId=157360872
+data:
+
+  rtk:
+    function_owner_list:
+      - howie_wang
+    reviewer_list:
+      - howie_wang
+      - astor_zhang
+      - wenjing_jiang
+      - shel_deng
+      - triton_yu
+      - sienna_shen
+      - roy_xie
+      - luke_sun
+    file_list:
+      - rtk/
+    exclude_file_list:
+      - rtk/demos/screen_410_502_lvgl
+      - rtk/demos/screen_410_502_squareline
+      - rtk/demos/benchmark
+    lock_status: false
+
+  rtk demo 410 *502:
+    function_owner_list:
+      - shel_deng
+    reviewer_list:
+      - howie_wang
+      - astor_zhang
+      - wenjing_jiang
+      - shel_deng
+      - triton_yu
+      - sienna_shen
+      - roy_xie
+      - luke_sun
+    file_list:
+      - rtk/demos/screen_410_502_lvgl
+    exclude_file_list: []
+    lock_status: false
+
+  squareline demo:
+    function_owner_list:
+      - luke_sun
+    reviewer_list: []
+    file_list:
+      - rtk/demos/screen_410_502_squareline
+    exclude_file_list: []
+    lock_status: false
+
+  benchmark demo:
+    function_owner_list:
+      - luke_sun
+    reviewer_list: []
+    file_list:
+      - rtk/demos/benchmark
+    exclude_file_list: []
+    lock_status: false
+
+  win sim:
+    function_owner_list:
+      - howie_wang
+      - luke_sun
+    reviewer_list: []
+    file_list:
+      - rtk/demos/win32_sim
+    exclude_file_list: []
+    lock_status: false
+
+  keil sim:
+    function_owner_list:
+      - howie_wang
+      - luke_sun
+    reviewer_list: []
+    file_list:
+      - rtk/demos/keil_sim
+    exclude_file_list: []
+    lock_status: false
+
+  scons tool:
+    function_owner_list:
+      - howie_wang
+    reviewer_list: []
+    file_list:
+      - rtk/demos/tool
+    exclude_file_list: []
+    lock_status: false
+
+  script:
+    function_owner_list: []
+    reviewer_list: []
+    file_list: []
+    exclude_file_list: []
+    lock_status: false
+
+  lvgl:
+    function_owner_list:
+      - roy_xie
+      - luke_sun
+      - howie_wang
+    reviewer_list: []
+    file_list:
+      - demos/
+      - docs/
+      - env_support/
+      - example/
+      - libs/
+      - scripts/
+      - src/
+      - tests/
+      - zephyr/
+    exclude_file_list:
+      - src/draw/ppe
+      - rtk/demos
+    lock_status: false
+
+  ppe:
+    function_owner_list:
+      - astor_zhang
+    reviewer_list: []
+    file_list:
+      - src/draw/ppe
+    exclude_file_list: []
+    lock_status: false
+
+  rle:
+    function_owner_list:
+      - wenjing_jiang
+    reviewer_list: []
+    file_list:
+      - src/libs/rle
+    exclude_file_list: []
+    lock_status: false
+
+  misc:
+    function_owner_list:
+      - luke_sun
+    reviewer_list: []
+    file_list:
+      - src/misc/lv_matrix.c
+    exclude_file_list: []
+    lock_status: false
+repo_onwer:
+
+  - roy_xie
+coverity_onwer:
+
+  - roy_xie
+path: realtek/subsys/lvgl
