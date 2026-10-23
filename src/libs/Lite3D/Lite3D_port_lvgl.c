@@ -13,6 +13,7 @@
 #include "../../misc/lv_types.h"
 #include "../../draw/lv_draw_private.h"
 
+#if LV_USE_LITE3D != 0
 void *l3_port_malloc(size_t size)
 {
     return lv_malloc(size);
@@ -130,3 +131,4 @@ int l3_init(void)
     lv_log("Lite3D port initialized\n");
     return 0;
 }
+#endif

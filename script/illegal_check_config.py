@@ -1,6 +1,8 @@
 check_base_path = r""
 
-apache_path = []
+apache_path = [
+    "src/libs/Lite3D",
+]
 
 mit_path = []
 
